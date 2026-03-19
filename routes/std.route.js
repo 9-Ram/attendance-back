@@ -6,190 +6,208 @@ import path from "path";
 
 const stdRoute = Router();
 
-// ✅ Validation Helper Functions
-const validateUsername = (username) => {
-  const errors = [];
-  
-  if (!username || !username.trim()) {
-    errors.push("กรุณากรอกชื่อผู้ใช้");
-  } else {
-    if (username.length < 3) {
-      errors.push("ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร");
-    }
-    if (username.length > 50) {
-      errors.push("ชื่อผู้ใช้ต้องไม่เกิน 50 ตัวอักษร");
-    }
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      errors.push("ชื่อผู้ใช้ต้องเป็นตัวอักษร ตัวเลข หรือ _ เท่านั้น");
-    }
-  }
-  
-  return errors;
-};
+// stdRoute.post("/create-std", async (req, res) => {
+//   try {
+//     const { fullName, studentId, username, password } = req.body;
+//     if (!fullName || !studentId || !username || !password)
+//       return res.status(400);
 
-const validatePassword = (password) => {
-  const errors = [];
-  
-  if (!password) {
-    errors.push("กรุณากรอกรหัสผ่าน");
-  } else {
-    if (password.length < 4) {
-      errors.push("รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร");
-    }
-    if (password.length > 100) {
-      errors.push("รหัสผ่านต้องไม่เกิน 100 ตัวอักษร");
-    }
-  }
-  
-  return errors;
-};
+//     const isStdExit = `select * from students where std_class_id = $1`;
+//     const findStdIdEsit = await pool.query(isStdExit, [studentId]);
+//     if (findStdIdEsit.rows.length > 0) {
+//       return res.json({
+//         err: "มีข้อมูลรหัสนักศึกษานี้อยู่แล้ว ไม่สามารถลงทะเบียนได้",
+//       });
+//     }
 
-const validateFullName = (fullName) => {
-  const errors = [];
-  
-  if (!fullName || !fullName.trim()) {
-    errors.push("กรุณากรอกชื่อ-นามสกุล");
-  } else {
-    if (fullName.trim().length < 2) {
-      errors.push("ชื่อ-นามสกุลต้องมีอย่างน้อย 2 ตัวอักษร");
-    }
-    if (fullName.length > 100) {
-      errors.push("ชื่อ-นามสกุลต้องไม่เกิน 100 ตัวอักษร");
-    }
-  }
-  
-  return errors;
-};
+//     const where = `select * from users where username = $1`;
+//     const fintExitStd = await pool.query(where, [username]);
+//     if (fintExitStd.rows.length > 0)
+//       return res.json({
+//         err: "มีข้อมูล username นี้อยู่แล้ว ไม่สามารถลงทะเบียนได้",
+//       });
 
-const validateStudentId = (studentId) => {
-  const errors = [];
-  
-  if (!studentId || !studentId.trim()) {
-    errors.push("กรุณากรอกรหัสนักศึกษา");
-  } else {
-    if (studentId.trim().length < 5) {
-      errors.push("รหัสนักศึกษาต้องมีอย่างน้อย 5 ตัวอักษร");
-    }
-    if (studentId.length > 20) {
-      errors.push("รหัสนักศึกษาต้องไม่เกิน 20 ตัวอักษร");
-    }
-  }
-  
-  return errors;
-};
+//     const internToUser = `INSERT INTO users (username,password,role_id) 
+//                    VALUES ($1, $2, $3) RETURNING *`;
+//     const query = `INSERT INTO students (fullname,std_class_id,username,password,major) 
+//                    VALUES ($1, $2, $3, $4, $5) RETURNING *`;
+
+//     const insertUser = await pool.query(internToUser, [username, password, 1]);
+//     const result = await pool.query(query, [
+//       fullName,
+//       studentId,
+//       username,
+//       password,
+//       "IT",
+//     ]);
+//     if (!result) return res.status(400);
+
+//     return res.status(200).json({ ok: true });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json(error);
+//   }
+// });
+
+// stdRoute.post("/create-easy", async (req, res) => {
+//   try {
+//   } catch (error) {
+//     console.error(error);
+//   }
+// });
 
 stdRoute.post("/create-std", async (req, res) => {
+  const client = await pool.connect();
   try {
     const { fullName, studentId, username, password } = req.body;
 
-    // ✅ Validate ข้อมูลทั้งหมด
-    const validationErrors = [];
-    
-    validationErrors.push(...validateFullName(fullName));
-    validationErrors.push(...validateStudentId(studentId));
-    validationErrors.push(...validateUsername(username));
-    validationErrors.push(...validatePassword(password));
-
-    if (validationErrors.length > 0) {
-      return res.status(400).json({ 
-        err: validationErrors.join(", "),
-        errors: validationErrors 
-      });
+    if (!fullName || !studentId || !username || !password) {
+      return res.status(400).json({ err: "กรอกข้อมูลไม่ครบ" });
     }
 
-    // ตรวจสอบรหัสนักศึกษาซ้ำ
-    const isStdExit = `SELECT * FROM students WHERE std_class_id = $1`;
-    const findStdIdEsit = await pool.query(isStdExit, [studentId.trim()]);
-    if (findStdIdEsit.rows.length > 0) {
-      return res.status(400).json({
-        err: "มีข้อมูลรหัสนักศึกษานี้อยู่แล้ว ไม่สามารถลงทะเบียนได้",
-      });
+    await client.query("BEGIN");
+
+    // 🔹 เช็คซ้ำ student
+    const checkStd = await client.query(
+      "SELECT * FROM students WHERE std_class_id = $1",
+      [studentId]
+    );
+    if (checkStd.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return res.json({ err: "มีรหัสนักศึกษานี้แล้ว" });
     }
 
-    // ตรวจสอบ username ซ้ำ
-    const where = `SELECT * FROM students WHERE username = $1`;
-    const fintExitStd = await pool.query(where, [username.trim()]);
-    if (fintExitStd.rows.length > 0) {
-      return res.status(400).json({
-        err: "มีข้อมูล username นี้อยู่แล้ว ไม่สามารถลงทะเบียนได้",
-      });
+    // 🔹 เช็คซ้ำ username
+    const checkUser = await client.query(
+      "SELECT * FROM users WHERE username = $1",
+      [username]
+    );
+    if (checkUser.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return res.json({ err: "username ซ้ำ" });
     }
 
-    // สร้างข้อมูล student
-    const query = `INSERT INTO students (fullname, std_class_id, username, password, major) 
-                   VALUES ($1, $2, $3, $4, $5) RETURNING *`;
+    // 🔹 insert users
+    await client.query(
+      "INSERT INTO users (username,password,role_id) VALUES ($1,$2,$3)",
+      [username, password, 1]
+    );
 
-    const result = await pool.query(query, [
-      fullName.trim(),
-      studentId.trim(),
-      username.trim(),
-      password, // ควรใช้ bcrypt hash ในการ production
-      "IT",
-    ]);
+    // 🔹 insert students
+    await client.query(
+      `INSERT INTO students 
+  (fullname,std_class_id,username,password,major,profile) 
+  VALUES ($1,$2,$3,$4,$5,$6)`,
+      [fullName, studentId, username, password, "IT", "default.png"]
+    );
+    await client.query("COMMIT");
 
-    if (!result || result.rows.length === 0) {
-      return res.status(400).json({ err: "ไม่สามารถสร้างข้อมูลได้" });
-    }
-
-    return res.status(200).json({
-      ok: true,
-      message: "ลงทะเบียนสำเร็จ",
-      data: {
-        student_id: result.rows[0].student_id,
-        fullname: result.rows[0].fullname,
-        username: result.rows[0].username,
-      },
-    });
+    return res.status(200).json({ ok: true });
   } catch (error) {
-    console.error("❌ Error in /create-std:", error);
-    res.status(500).json({
-      err: "เกิดข้อผิดพลาดในการลงทะเบียน",
-      details: error.message,
-    });
+    await client.query("ROLLBACK");
+    console.error(error);
+    return res.status(500).json({ err: "สมัครไม่สำเร็จ" });
+  } finally {
+    client.release();
   }
 });
+
+// stdRoute.post("/login", async (req, res) => {
+//   try {
+//     const { username, password } = req.body;
+
+//     console.log("login:", username, password);
+
+//     let role = 1;
+//     let query = "SELECT * FROM students WHERE username = $1";
+//     let result = await pool.query(query, [username]);
+
+//     if (result.rows.length > 0) {
+//       if (result.rows[0].password !== password) {
+//         return res.status(401).json({ err: "password incorrect" });
+//       }
+//     } else {
+//       query = "SELECT * FROM professors WHERE username = $1";
+//       role = 2;
+//       result = await pool.query(query, [username]);
+
+//       if (result.rows.length === 0) {
+//         return res.status(401).json({ err: "user not found" });
+//       }
+
+//       if (result.rows[0].password !== password) {
+//         return res.status(401).json({ err: "password incorrect" });
+//       }
+//     }
+
+//     return res.status(200).json({
+//       data: { ...result.rows[0], role },
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ err: "Internal server error" });
+//   }
+// });
 
 stdRoute.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // ✅ Validate input
-    const validationErrors = [];
-    
-    validationErrors.push(...validateUsername(username));
-    validationErrors.push(...validatePassword(password));
+    console.log("login:", username, password);
 
-    if (validationErrors.length > 0) {
-      return res.status(400).json({ 
-        err: validationErrors.join(", "),
-        errors: validationErrors 
+    // 🔹 1. หาใน students
+    let result = await pool.query(
+      "SELECT * FROM students WHERE username = $1",
+      [username]
+    );
+
+    if (result.rows.length > 0) {
+      if (result.rows[0].password !== password) {
+        return res.status(401).json({ err: "password incorrect" });
+      }
+
+      return res.status(200).json({
+        data: { ...result.rows[0], role: 1 },
       });
     }
 
-    let role = 1;
-    let query = "SELECT * FROM students WHERE username = $1 AND password = $2";
+    // 🔹 2. หาใน professors
+    result = await pool.query(
+      "SELECT * FROM professors WHERE username = $1",
+      [username]
+    );
 
-    let result = await pool.query(query, [username.trim(), password]);
+    if (result.rows.length > 0) {
+      if (result.rows[0].password !== password) {
+        return res.status(401).json({ err: "password incorrect" });
+      }
 
-    if (result.rows.length < 1) {
-      query = "SELECT * FROM professors WHERE username = $1 AND password = $2";
-      role = 2;
-      result = await pool.query(query, [username.trim(), password]);
+      return res.status(200).json({
+        data: { ...result.rows[0], role: 2 },
+      });
     }
 
-    console.log("🚀 ~ query:", query);
-    console.log("🚀 ~ result.rows:", result.rows);
+    // 🔹 3. หาใน users (admin หรือ user อื่น)
+    result = await pool.query(
+      "SELECT * FROM users WHERE username = $1",
+      [username]
+    );
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({ err: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+    if (result.rows.length > 0) {
+      if (result.rows[0].password !== password) {
+        return res.status(401).json({ err: "password incorrect" });
+      }
+
+      return res.status(200).json({
+        data: { ...result.rows[0], role: result.rows[0].role_id },
+      });
     }
 
-    return res.status(200).json({
-      ok: true,
-      data: { ...result.rows[0], role },
-    });
+    // ❌ ไม่เจอเลย
+    return res.status(401).json({ err: "user not found" });
+
   } catch (error) {
-    console.error("❌ Error in /login:", error);
+    console.error(error);
     return res.status(500).json({ err: "Internal server error" });
   }
 });
@@ -202,17 +220,6 @@ stdRoute.put("/students/:id", upload.single("profile"), async (req, res) => {
 
     if (!id) {
       return res.status(400).json({ err: "กรุณาระบุ id" });
-    }
-
-    // ✅ Validate fullname ถ้ามีการส่งมา
-    if (fullname) {
-      const fullnameErrors = validateFullName(fullname);
-      if (fullnameErrors.length > 0) {
-        return res.status(400).json({ 
-          err: fullnameErrors.join(", "),
-          errors: fullnameErrors 
-        });
-      }
     }
 
     if (!fullname && !major && !filePath) {
@@ -251,7 +258,7 @@ stdRoute.put("/students/:id", upload.single("profile"), async (req, res) => {
     `;
 
     const result = await pool.query(query, [
-      fullname ? fullname.trim() : null,
+      fullname,
       major,
       filePath,
       Number(id),
@@ -276,7 +283,7 @@ stdRoute.get("/students/:id", async (req, res) => {
     }
 
     const query = `
-      SELECT student_id, fullname, std_class_id, username, major, profile
+      SELECT student_id, fullname, std_class_id, username, major,profile
       FROM students
       WHERE student_id = $1
       LIMIT 1
@@ -284,7 +291,6 @@ stdRoute.get("/students/:id", async (req, res) => {
 
     const result = await pool.query(query, [id]);
     console.log(result.rows);
-
     if (result.rows.length === 0) {
       return res.status(404).json({ err: "ไม่พบข้อมูลนักเรียน" });
     }
@@ -317,7 +323,7 @@ stdRoute.delete("/students/:id", async (req, res) => {
       WHERE student_id = $1
       RETURNING student_id
       `,
-      [id]
+      [id],
     );
 
     if (result.rows.length === 0) {
@@ -343,18 +349,18 @@ stdRoute.delete("/students/:id", async (req, res) => {
 stdRoute.get("/students", async (req, res) => {
   try {
     const query = `
-      SELECT
-        student_id,
-        fullname,
-        std_class_id,
-        username,
-        major
-      FROM students 
+   SELECT
+  student_id,
+  fullname,
+  std_class_id,
+  username,
+  major
+FROM students 
+
     `;
 
     const result = await pool.query(query);
     console.log("🚀 ~ result.rows:", result.rows);
-
     return res.status(200).json({
       total: result.rows.length,
       data: result.rows,
@@ -365,6 +371,56 @@ stdRoute.get("/students", async (req, res) => {
   }
 });
 
+// stdRoute.post("/check-class", async (req, res) => {
+//   try {
+//     const { classId, stdId } = req.body;
+//     const filePath = req.file ? req.file.path : null;
+
+//     if (!classId || !stdId) {
+//       return res.status(400).json({ err: "ข้อมูลไม่ครบ" });
+//     }
+
+//     // 🔹 ใช้เวลา server
+//     const checkinTime = new Date();
+
+//     // 🔹 ดึงเวลาเข้าเรียนจาก courses
+//     const courseResult = await pool.query(
+//       `SELECT time_check FROM courses WHERE course_id = $1`,
+//       [classId],
+//     );
+
+//     if (courseResult.rows.length === 0) {
+//       return res.status(404).json({ err: "ไม่พบวิชาเรียน" });
+//     }
+
+//     const timeCheck = courseResult.rows[0].time_check; // TIME
+
+//     // 🔹 ดึงเฉพาะเวลา (HH:mm:ss) จาก checkinTime
+//     const checkinTimeOnly = checkinTime.toTimeString().slice(0, 8); // "HH:mm:ss"
+
+//     // 🔥 ตัดสินสถานะ
+//     const status = checkinTimeOnly > timeCheck ? "มาสาย" : "ตรงเวลา";
+
+//     // 🔹 บันทึกข้อมูล
+//     const query = `
+//         INSERT INTO attendance
+//         (course_id, student_id, checkin_time, status, leave_file)
+//         VALUES ($1, $2, NOW(), $3, $4)
+//       `;
+
+//     await pool.query(query, [classId, stdId, status, filePath]);
+
+//     res.json({
+//       ok: true,
+//       status,
+//       checkin_time: checkinTime,
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ err: "Check-in failed" });
+//   }
+// });
+
 stdRoute.post("/check-class", upload.single("leavDoc"), async (req, res) => {
   try {
     const { classId, stdId } = req.body;
@@ -374,10 +430,22 @@ stdRoute.post("/check-class", upload.single("leavDoc"), async (req, res) => {
       return res.status(400).json({ err: "ข้อมูลไม่ครบ" });
     }
 
-    // 🔹 ใช้เวลา server
+    // ✅ เช็คว่า enroll แล้วหรือยัง
+    const enrollCheck = await pool.query(
+      `SELECT * FROM enrollments WHERE student_id = $1 AND course_id = $2`,
+      [stdId, classId]
+    );
+
+    // 🔥 ถ้ายังไม่ enroll → สมัครให้เลย
+    if (enrollCheck.rows.length === 0) {
+      await pool.query(
+        `INSERT INTO enrollments (student_id, course_id) VALUES ($1, $2)`,
+        [stdId, classId]
+      );
+    }
+
     const checkinTime = new Date();
 
-    // 🔹 ดึงเวลาเข้าเรียนจาก courses
     const courseResult = await pool.query(
       `SELECT time_check FROM courses WHERE course_id = $1`,
       [classId]
@@ -387,22 +455,28 @@ stdRoute.post("/check-class", upload.single("leavDoc"), async (req, res) => {
       return res.status(404).json({ err: "ไม่พบวิชาเรียน" });
     }
 
-    const timeCheck = courseResult.rows[0].time_check; // TIME
+    const timeCheck = courseResult.rows[0].time_check;
+    const checkinTimeOnly = checkinTime.toTimeString().slice(0, 8);
 
-    // 🔹 ดึงเฉพาะเวลา (HH:mm:ss) จาก checkinTime
-    const checkinTimeOnly = checkinTime.toTimeString().slice(0, 8); // "HH:mm:ss"
+    const status = checkinTimeOnly > timeCheck ? "มาสาย" : "มาเรียน";
 
-    // 🔥 ตัดสินสถานะ
-    const status = checkinTimeOnly > timeCheck ? "มาสาย" : "ตรงเวลา";
+    // ✅ กันกดซ้ำ (สำคัญมาก)
+    const alreadyCheck = await pool.query(
+      `SELECT * FROM attendance 
+       WHERE student_id = $1 AND course_id = $2 AND DATE(checkin_time) = CURRENT_DATE`,
+      [stdId, classId]
+    );
 
-    // 🔹 บันทึกข้อมูล
-    const query = `
-      INSERT INTO attendance
-      (course_id, student_id, checkin_time, status, leave_file)
-      VALUES ($1, $2, NOW(), $3, $4)
-    `;
+    if (alreadyCheck.rows.length > 0) {
+      return res.status(400).json({ err: "เช็คชื่อไปแล้ววันนี้" });
+    }
 
-    await pool.query(query, [classId, stdId, status, filePath]);
+    await pool.query(
+      `INSERT INTO attendance
+       (course_id, student_id, checkin_time, status, leave_file)
+       VALUES ($1, $2, NOW(), $3, $4)`,
+      [classId, stdId, status, filePath]
+    );
 
     res.json({
       ok: true,
@@ -410,8 +484,72 @@ stdRoute.post("/check-class", upload.single("leavDoc"), async (req, res) => {
       checkin_time: checkinTime,
     });
   } catch (err) {
-    console.error(err);
+    console.error("🔥 CHECK CLASS ERROR:", err);
     res.status(500).json({ err: "Check-in failed" });
+  }
+});
+
+//ลงทะเบียนวิชาเรียน
+stdRoute.post("/enroll", async (req, res) => {
+  try {
+    const { student_id, course_id } = req.body;
+
+    if (!student_id || !course_id) {
+      return res.json({ err: "ข้อมูลไม่ครบ" });
+    }
+
+    // 🔹 กันลงซ้ำ
+    const check = await pool.query(
+      "SELECT * FROM enrollments WHERE student_id=$1 AND course_id=$2",
+      [student_id, course_id]
+    );
+
+    if (check.rows.length > 0) {
+      return res.json({ err: "ลงทะเบียนแล้ว" });
+    }
+
+    // 🔹 insert
+    await pool.query(
+      "INSERT INTO enrollments (student_id, course_id) VALUES ($1,$2)",
+      [student_id, course_id]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ err: "Enroll failed" });
+  }
+});
+
+// เพิ่ม route ใหม่: ดึง attendance วันนี้ของห้องเรียน
+stdRoute.get("/attendance-today/:classId", async (req, res) => {
+  try {
+    const { classId } = req.params;
+
+    const result = await pool.query(
+      `SELECT 
+         a.attendance_id,
+         a.student_id,
+         s.fullname,
+         s.std_class_id,
+         a.checkin_time,
+         a.status,
+         a.leave_file
+       FROM attendance a
+       JOIN students s ON s.student_id = a.student_id
+       WHERE a.course_id = $1
+         AND DATE(a.checkin_time) = CURRENT_DATE
+       ORDER BY a.checkin_time ASC`,
+      [classId]
+    );
+
+    return res.status(200).json({
+      total: result.rows.length,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ err: "Internal server error" });
   }
 });
 
